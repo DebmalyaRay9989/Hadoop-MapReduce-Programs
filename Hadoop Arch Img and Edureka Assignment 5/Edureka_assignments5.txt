@@ -1,0 +1,569 @@
+Consider the bank database schema as given below:
+
+branch(branch_name, branch_city, assets)
+customer(customer_name, customer_street, customer_city)
+loan(loan_number, branch_name, amount)
+borrower(customer_name, loan_number)
+account(account_number, branch_name, balance)
+depositor(customer_name, account_number)
+
+Let us define a view branch_cust as follows:
+
+create view branch cust as select branch_name, customer_name from depositor, account where depositor.account_number = account.account_number
+
+Suppose that the view is materialized; i.e., the view is computed and stored.
+==============================================================================
+ 
+a.  Write an SQL trigger to maintain the view, i.e., to keep it up to date on insertions to and deletions from depositor or account. Do not bother about updates.
+
+b. Write an SQL trigger to carry out the following action: On delete of an account, for each owner of the account, 
+check if the owner has any remaining accounts, and if he/she does not, delete her from the depositor relation.
+
+Answer: create table account
+(account_number varchar(15) not null unique,
+branch_name varchar(15) not null,
+balance number not null,
+primary key(account_number));
+
+
+create table branch
+(branch_name varchar(15) not null unique,
+branch_city varchar(15) not null,
+assets number not null,
+primary key(branch_name));
+
+create table customer
+(customer_name varchar(15) not null unique,
+customer_street varchar(12) not null,
+customer_city varchar(15) not null,
+primary key(customer_name));
+
+create table loan
+(loan_number varchar(15) not null unique,
+branch_name varchar(15) not null,
+amount number not null,
+primary key(loan_number));
+
+create table depositor
+(customer_name varchar(15) not null,
+account_number varchar(15) not null,
+primary key(customer_name, account_number),
+foreign key(account_number) references account(account_number),
+foreign key(customer_name) references customer(customer_name));
+
+create table borrower
+(customer_name varchar(15) not null,
+loan_number varchar(15) not null,
+primary key(customer_name, loan_number),
+foreign key(customer_name) references customer(customer_name),
+foreign key(loan_number) references loan(loan_number)); 
+
+NOTE: Please insert the following data into the database for the execution of further queries.
+
+insert into customer values (‘Jones’, ‘Main’, ‘Harrison’);
+insert into customer values (‘Smith’, ‘Main’, ‘Rye’);
+insert into customer values (‘Hayes’, ‘Main’, ‘Harrison’);
+insert into customer values (‘Curry’, ‘North’, ‘Rye’);
+insert into customer values (‘Lindsay’, ‘Park’, ‘Pittsfield’);
+insert into customer values (‘Turner’, ‘Putnam’, ‘Stamford’);
+insert into customer values (‘Williams’, ‘Nassau’, ‘Princeton’);
+insert into customer values (‘Adams’, ‘Spring’, ‘Pittsfield’);
+insert into customer values (‘Johnson’, ‘Alma’, ‘Palo Alto’);
+insert into customer values (‘Glenn’, ‘Sand Hill’, ‘Woodside’);
+insert into customer values (‘Brooks’, ‘Senator’, ‘Brooklyn’);
+insert into customer values (‘Green’, ‘Walnut’, ‘Stamford’);
+insert into customer values (‘Jackson’, ‘University’, ‘Salt Lake’);
+insert into customer values (‘Majeris’, ‘First’, ‘Rye’);
+insert into customer values (‘McBride’, ‘Safety’, ‘Rye’);
+
+insert into branch values (‘Downtown’, ‘Brooklyn’, 900000);
+ insert into branch values (‘Redwood’, ‘Palo Alto’, 2100000);
+ insert into branch values (‘Perryridge’, ‘Horseneck’, 1700000);
+ insert into branch values (‘Mianus’, ‘Horseneck’, 400200);
+ insert into branch values (‘Round Hill’, ‘Horseneck’, 8000000);
+ insert into branch values (‘Pownal’, ‘Bennington’, 400000);
+ insert into branch values (‘North Town’, ‘Rye’, 3700000);
+ insert into branch values (‘Brighton’, ‘Brooklyn’, 7000000);
+ insert into branch values (‘Central’, ‘Rye’, 400280);
+
+insert into account values (‘A-101’, ‘Downtown’, 500);
+ insert into account values (‘A-215’, ‘Mianus’, 700);
+ insert into account values (‘A-102’, ‘Perryridge’, 400);
+ insert into account values (‘A-305’, ‘Round Hill’, 350);
+ insert into account values (‘A-201’, ‘Perryridge’, 900);
+ insert into account values (‘A-222’, ‘Redwood’, 700);
+ insert into account values (‘A-217’, ‘Brighton’, 750);
+ insert into account values (‘A-333’, ‘Central’, 850);
+ insert into account values (‘A-444’, ‘North Town’, 625);
+
+
+
+
+
+
+insert into depositor values (‘Johnson’,’A-101′);
+ insert into depositor values (‘Smith’, ‘A-215’);
+insert into depositor values (‘Hayes’, ‘A-102’);
+insert into depositor values (‘Hayes’, ‘A-101’);
+insert into depositor values (‘Turner’, ‘A-305’);
+insert into depositor values (‘Johnson’,’A-201′);
+ insert into depositor values (‘Jones’, ‘A-217’);
+insert into depositor values (‘Lindsay’,’A-222′);
+ insert into depositor values (‘Majeris’,’A-333′);
+ insert into depositor values (‘Smith’, ‘A-444’);
+
+insert into loan values (‘L-17’, ‘Downtown’, 1000);
+ insert into loan values (‘L-23’, ‘Redwood’, 2000);
+ insert into loan values (‘L-15’, ‘Perryridge’, 1500);
+ insert into loan values (‘L-14’, ‘Downtown’, 1500);
+ insert into loan values (‘L-93’, ‘Mianus’, 500);
+ insert into loan values (‘L-11’, ‘Round Hill’, 900);
+ insert into loan values (‘L-16’, ‘Perryridge’, 1300);
+ insert into loan values (‘L-20’, ‘North Town’, 7500);
+ insert into loan values (‘L-21’, ‘Central’, 570);
+
+insert into borrower values (‘Jones’, ‘L-17’);
+insert into borrower values (‘Smith’, ‘L-23’);
+insert into borrower values (‘Hayes’, ‘L-15’);
+insert into borrower values (‘Jackson’, ‘L-14’);
+insert into borrower values (‘Curry’, ‘L-93’);
+insert into borrower values (‘Smith’, ‘L-11’);
+insert into borrower values (‘Williams’,’L-17′);
+ insert into borrower values (‘Adams’, ‘L-16’);
+insert into borrower values (‘McBride’, ‘L-20’);
+insert into borrower values (‘Smith’, ‘L-21’); 
+
+
+########################################################################
+
+create view branch cust as
+select branch name, customer name
+from depositor, account
+where depositor.account number = account.account number
+#########################################################################
+Suppose that the view is materialized; that is, the view is computed and
+stored. Write triggers to maintain the view, that is, to keep it up-to-date
+on insertions to and deletions from depositor or account. Do not bother
+about updates.
+Answer: For inserting into the materialized view branch cust we must
+set a database trigger on an insert into depositor and account. We assume
+that the database system uses immediate binding for rule execution. Further, assume that the current version of a relation is denoted by the
+relation name itself, while the set of newly inserted tuples is denoted by
+qualifying the relation name with the prefix – inserted.
+The active rules for this insertion are given below –
+
+################################################################################
+
+define trigger insert into branch cust via depositor
+after insert on depositor
+referencing new table as inserted for each statement
+insert into branch cust
+select branch name, customer name
+from inserted, account
+where inserted.account number = account.account number
+
+#########################################################################
+
+define trigger insert into branch cust via account
+after insert on account
+referencing new table as inserted for each statement
+insert into branch cust
+select branch name, customer name
+from depositor, inserted
+where depositor.account number = inserted.account number
+
+#################################################################################
+
+8 Consider the bank database of Figure 5.25. Write an SQL trigger to carry
+out the following action: On delete of an account, for each owner of the
+account, check if the owner has any remaining accounts, and if she does
+not, delete her from the depositor relation
+#################################################################################
+
+create trigger check-delete-trigger after delete on account
+referencing old row as orow
+for each row
+delete from depositor
+where depositor.customer name not in
+( select customer name from depositor
+where account number <> orow.account number )
+end
+
+######################################################################################
+
+a. Find the titles of courses in the Comp. Sci. department that have 3
+credits.
+b. Find the IDs of all students who were taught by an instructor named
+Einstein; make sure there are no duplicates in the result.
+c. Find the highest salary of any instructor.
+d. Find all instructors earning the highest salary (there may be more
+than one with the same salary).
+e. Find the enrollment of each section that was offered in Autumn 2009.
+f. Find the maximum enrollment, across all sections, in Autumn 2009.
+g. Find the sections that had the maximum enrollment in Autumn 2009.
+
+#####################################################################################
+
+
+a )Find the titles of courses in the Comp. Sci. department that have 3
+credits.
+
+select title
+from course
+where dept name = ’Comp. Sci.’
+and credits = 3
+
+
+b. Find the IDs of all students who were taught by an instructor named
+Einstein; make sure there are no duplicates in the result.
+This query can be answered in several different ways. One way is as
+follows.
+
+select distinct student.ID
+from (student join takes using(ID))
+join (instructor join teaches using(ID))
+using(course id, sec id, semester, year)
+where instructor.name = ’Einstein’
+
+As an alternative to th join .. using syntax above the query can be
+written by enumerating relations in the from clause, and adding the
+corresponding join predicates on ID, course id,section id,semester, and
+year to the where clause.
+Note that using natural join in place of join .. using would result in
+equating student ID with instructor ID, which is incorrect.
+
+c. Find the highest salary of any instructor.
+select max(salary)
+from instructor
+
+d. Find all instructors earning the highest salary (there may be more
+than one with the same salary).
+
+select ID, name
+from instructor
+where salary = (select max(salary) from instructor)
+
+e. Find the enrollment of each section that was offered in Autumn 2009.
+One way of writing the query is as follows.
+
+select course id, sec id, count(ID)
+from section natural join takes
+where semester = ’Autumn’
+and year = 2009
+group by course id, sec id
+
+Note that if a section does not have any students taking it, it would
+not appear in the result. One way of ensuring such a section appears
+with a count of 0 is to replace natural join by the natural left outer
+join operation, covered later in Chapter 4. Another way is to use a
+subquery in the select clause, as follows.
+
+select course id, sec id,
+(select count(ID)
+from takes
+where takes.year = section.year
+and takes.semester = section.semester
+and takes.course id = section.course id
+and takes.section id = section.section id)
+from section
+where semester = ’Autumn’
+and year = 2009
+
+Note that if the result of the subquery is empty, the aggregate function count returns a value of 0.
+f. Find the maximum enrollment, across all sections, in Autumn 2009.
+
+One way of writing this query is as follows:
+select max(enrollment)
+from (select count(ID) as enrollment
+from section natural join takes
+where semester = ’Autumn’
+and year = 2009
+group by course id, sec id)
+
+As an alternative to using a nested subquery in the from clause, it is
+possible to use a with clause, as illustrated in the answer to the next
+part of this question.
+
+A subtle issue in the above query is that if no section had any enrollment, the answer would be empty, not 0. We can use the alternative
+using a subquery, from the previous part of this question, to ensure
+the count is 0 in this case.
+
+g. Find the sections that had the maximum enrollment in Autumn 2009.
+
+The following answer uses a with clause to create a temporary view,
+simplifying the query.
+
+with sec enrollment as (
+
+select course id, sec id, count(ID) as enrollment
+from section natural join takes
+where semester = ’Autumn’
+and year = 2009
+group by course id, sec id)
+select course id, sec id
+from sec enrollment
+where enrollment = (select max(enrollment) from sec enrollment)
+
+It is also possible to write the query without the with clause, but the
+subquery to find enrollment would get repeated twice in the query.
+
+#########################################################################################################################
+
+The following relations keep track of airline flight information:
+Flights(flno: integer, from: string, to: string, distance: integer, departs:
+time,
+arrives: time, price: integer)
+Aircraft(aid: integer, aname: string, cruisingrange: integer)
+Certified(eid: integer, aid: integer)
+Employees(eid: integer, ename: string, salary: integer)
+Note that the Employees relation describes pilots and other kinds of employees
+aswell; every pilot is certified for some aircraft, and only pilots are certified to
+fly.Write each of the following queries in SQL.
+a. Find the names of aircraft such that all pilots certified to operate them earn
+more than $80,000.
+b. For each pilot who is certified for more than three aircraft, find the eid and the
+maximum cruisingrange of the aircraft for which she or he is certified.
+c. Find the names of pilots whose salary is less than the price of the cheapest
+route from Los Angeles to Honolulu.
+d. For all aircraft with cruisingrange over 1000 miles, find the name of the
+aircraft and the average salary of all pilots certified for this aircraft.
+e. Find the names of pilots certified for some Boeing aircraft.
+f. Find the aids of all aircraft that can be used on routes from Los Angeles to
+Chicago.
+g. Identify the routes that can be piloted by every pilot who makes more than
+$100,000.
+h. Print the enames of pilots who can operate planes with cruisingrange greater
+than 3000 miles but are not certified on any Boeing aircraft.
+i. A customer wants to travel from Madison to New York with no more than two
+changes of flight. List the choice of departure times from Madison if the
+customer wants to arrive in New York by 6 p.m.
+j. Compute the difference between the average salary of a pilot and the average
+salary of all employees (including pilots).
+k. Print the name and salary of every nonpilot whose salary is more than the
+average salary for pilots. 
+l. Print the names of employees who are certified only on aircrafts with cruising
+range longer than 1000 miles.
+m. Print the names of employees who are certified only on aircrafts with cruising
+range longer than 1000 miles, but on at least two such aircrafts.
+n. Print the names of employees who are certified only on aircrafts with cruising
+range longer than 1000 miles and who are certified on some Boeing aircraft. 
+
+##################################################################################################################################
+
+Ans:
+a. SELECT DISTINCT A.aname
+FROM Aircraft A
+WHERE A.Aid IN (SELECT C.aid
+ FROM Certified C, Employees E
+ WHERE C.eid = E.eid AND
+ NOT EXISTS ( SELECT *
+ FROM Employees E1
+ WHERE E1.eid = E.eid AND E1.salary < 80000 ))
+b. SELECT C.eid, MAX (A.cruisingrange)
+FROM Certified C, Aircraft A
+WHERE C.aid = A.aid
+GROUP BY C.eid
+HAVING COUNT (*) > 3
+c. SELECT DISTINCT E.ename
+FROM Employees E
+WHERE E.salary < ( SELECT MIN (F.price)
+ FROM Flights F
+ WHERE F.from = ‘Los Angeles’ AND F.to = ‘Honolulu’ )
+d. Observe that aid is the key for Aircraft, but the question asks for aircraft names; we deal with this
+complication by using an intermediate relation Temp:
+SELECT Temp.name, Temp.AvgSalary
+FROM ( SELECT A.aid, A.aname AS name, AVG (E.salary) AS AvgSalary
+ FROM Aircraft A, Certified C, Employees E
+ WHERE A.aid = C.aid AND C.eid = E.eid AND A.cruisingrange > 1000
+ GROUP BY A.aid, A.aname ) AS Temp
+
+e. SELECT DISTINCT E.ename
+FROM Employees E, Certified C, Aircraft A
+WHERE E.eid = C.eid AND C.aid = A.aid AND A.aname LIKE ‘Boeing%’
+f. SELECT A.aid
+FROM Aircraft A
+WHERE A.cruisingrange > ( SELECT MIN (F.distance)
+ FROM Flights F
+ WHERE F.from = ‘Los Angeles’ AND F.to = ‘Chicago’ ) 
+g. SELECT DISTINCT F.from, F.to
+FROM Flights F
+WHERE NOT EXISTS ( SELECT *
+ FROM Employees E
+ WHERE E.salary > 100000
+ AND
+ NOT EXISTS (SELECT *
+ FROM Aircraft A, Certified C
+ WHERE A.cruisingrange > F.distance AND
+ E.eid = C.eid AND A.aid = C.aid) )
+h. SELECT DISTINCT E.ename
+FROM Employees E
+WHERE E.eid IN ( ( SELECT C.eid
+ FROM Certified C
+ WHERE EXISTS ( SELECT A.aid
+ FROM Aircraft A
+ WHERE A.aid = C.aid
+ AND A.cruisingrange > 3000 )
+ AND
+ NOT EXISTS ( SELECT A1.aid
+ FROM Aircraft A1
+ WHERE A1.aid = C.aid
+ AND A1.aname LIKE ‘Boeing%’ ))
+i. SELECT F.departs
+FROM Flights F
+WHERE F.flno IN ( ( SELECT F0.flno
+ FROM Flights F0
+ WHERE F0.from = ‘Madison’ AND F0.to = ‘New York’
+ AND F0.arrives < ‘18:00’ )
+ UNION
+ ( SELECT F0.flno
+ FROM Flights F0, Flights F1
+ WHERE F0.from = ‘Madison’ AND F0.to <> ‘New York’
+ AND F0.to = F1.from AND F1.to = ‘New York’
+ AND F1.departs > F0.arrives
+ AND F1.arrives < ‘18:00’ )
+ UNION
+ ( SELECT F0.flno
+ FROM Flights F0, Flights F1, Flights F2
+ WHERE F0.from = ‘Madison’
+ AND F0.to = F1.from
+ AND F1.to = F2.from
+ AND F2.to = ‘New York’
+ AND F0.to <> ‘New York’
+ AND F1.to <> ‘New York’
+ AND F1.departs > F0.arrives
+ AND F2.departs > F1.arrives
+ AND F2.arrives < ‘18:00’ )) 
+j. SELECT Temp1.avg - Temp2.avg
+FROM (SELECT AVG (E.salary) AS avg
+ FROM Employees E
+ WHERE E.eid IN (SELECT DISTINCT C.eid
+ FROM Certified C )) AS Temp1,
+ (SELECT AVG (E1.salary) AS avg
+ FROM Employees E1 ) AS Temp2
+k. SELECT E.ename, E.salary
+FROM Employees E
+WHERE E.eid NOT IN ( SELECT DISTINCT C.eid
+ FROM Certified C )
+AND E.salary > ( SELECT AVG (E1.salary)
+ FROM Employees E1
+ WHERE E1.eid IN
+ ( SELECT DISTINCT C1.eid
+ FROM Certified C1 ) )
+l. SELECT E.ename
+FROM Employees E, Certified C, Aircraft A
+WHERE C.aid = A.aid AND E.eid = C.eid
+GROUP BY E.eid, E.ename
+HAVING EVERY (A.cruisingrange > 1000)
+m. SELECT E.ename
+FROM Employees E, Certified C, Aircraft A
+WHERE C.aid = A.aid AND E.eid = C.eid
+GROUP BY E.eid, E.ename
+HAVING EVERY (A.cruisingrange > 1000) AND COUNT (*) > 1
+n. SELECT E.ename
+FROM Employees E, Certified C, Aircraft A
+WHERE C.aid = A.aid AND E.eid = C.eid
+GROUP BY E.eid, E.ename
+HAVING EVERY (A.cruisingrange > 1000) AND ANY (A.aname = ’Boeing’)
+
+###########################################################################################################
+
+The following relations keep track of airline flight information:
+
+Flights(flno: integer, from: string, to: string, distance: integer, departs: time, arrives: time, price: integer)
+Aircraft(aid: integer, aname: string, cruisingrange: integer)
+Certified(eid: integer, aid: integer)
+Employees(eid: integer, ename: string, salary: integer)
+Note that the Employees relation describes pilots and other kinds of employees as well; every pilot is certified for some aircraft, and only pilots are certified to fly.
+
+Create the required tables and upload the data into tables from the provided CSV files present at the location: hdfs:///bigdatapgp/common_folder/assignment5/flight_dataset/ 
+
+Write SQL queries for each of the following:
+
+Find the names of aircraft where all pilots certified to operate them earn more than $80,000.
+For each pilot who is certified for more than three aircraft, find the eid and the maximum cruisingrange of the aircraft for which she or he is certified.
+For all aircraft with cruisingrange over 1000 miles, find the names of the aircrafts and the average salary of all pilots certified for those aircrafts.
+Find the names of pilots certified for some Boeing aircraft.
+Compute the difference between the average salary of a pilot and the average salary of all employees (including pilots).
+Print the name and salary of every non-pilot whose salary is more than the average salary for pilots.
+Expected Solution: You need to paste the SQL commands used.
+
+##############################################################################################################
+
+
+Each vehicle is identified by a vehicle identification number (VIN). 
+Each individual vehicle is a particular model of a particular brand offered by the company 
+(e.g., the XF is a model of the car brand Jaguar of Tata Motors).
+ Each model can be offered with a variety of options, but an individual car may have only some (or none) of the available options.
+ The database needs to store information about models, brands, and options, as well as information about individual dealers, customers, and cars.
+
+ 
+
+Your design should include a set of relational schemas and a list of constraints, including primary-key & foreign-key constraints.
+
+###################################################################################################################
+
+brand(name)
+model(model id,
+name)
+vehicle(VIN)
+option(option id,
+specification)
+customer(customer id,
+name,
+address)
+dealer(dealer id,
+name,
+address)
+has models(name,
+model id ,
+foreign key name references brand ,
+foreign key model id references model
+)
+has vehicles(model id,
+VIN,
+foreign key VIN references vehicle,
+foreign key model id references model
+)
+available options(model id,
+option id,
+foreign key option id references option,
+foreign key model id references model
+)
+has options(VIN,
+model id,
+option id,
+foreign key VIN references vehicle,
+foreign key (model id, option id) references available options
+)
+has dealer(VIN,
+dealer id ,
+foreign key dealer id references dealer,
+foreign key VIN references vehicle
+)
+owned by(VIN,
+customer id,
+foreign key customer id references customer,
+foreign key VIN references vehicle
+)
+
+
+MYSQL COMMANDS :
+==================
+
+Following database is made on MySQL:
+
+CREATE database CAR:
+
+USE CAR:
+CREATE table brand(name varchar(20));
+CREATE table model(model_id int(10),name varchar(20),primary key((model_id));
+CREATE table Vehicle (Vin varchar(20));
+CREATE table option(option_id int(10),specification varchar(20),primary key(option_id));
+CREATE table customer(customer id,name varchar(20),address varchar(100));
+CREATE table Dealer (Dealer_ID int(10), name char(32), address varchar(100),primary key(Dealer_ID));
+CREATE table models (name varchar(100),model_id int(10),foreign key(name) references brand(name),foreign key((model_id) references model((model_id));
+CREATE table vehicles (model_id int(10),VIN varchar(20),foreign key(VIN) references Vehicle(VIN),foreign key((model_id) references model((model_id));
+CREATE table options (model_id int(10),option_id int(10),foreign key(VIN) references Vehicle(VIN),foreign key((option_id) references option((option_id));
+CREATE table dealer(VIN varchar(20),dealer_id int(10),foreign key(dealer_id) references Dealer(dealer_id),foreign key (VIN) references vehicle((VIN));
+CREATE table owned_by(VIN varchar(20),customer_id int(10),foreign key (customer_id) references customer(customer_id),foreign key (VIN) references vehicle(VIN));
+
